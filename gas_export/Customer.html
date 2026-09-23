@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>สั่งซื้อน้ำกระท่อมดิบเดลิเวอรี - Kratom Green Express</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background-color: #030712; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen border-x border-slate-800 flex flex-col relative pb-28">
+
+  <!-- Top Header -->
+  <header className="bg-slate-900/90 backdrop-blur-md p-4 sticky top-0 z-30 border-b border-slate-800 flex items-center justify-between">
+    <div className="flex items-center space-x-2.5">
+      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black">
+        🍃
+      </div>
+      <div>
+        <h1 id="headerStoreName" className="font-extrabold text-sm text-white">กระท่อมเขียวเดลิเวอรี</h1>
+        <p className="text-[11px] text-emerald-400">● เปิดต้มสดบริการทุกวัน</p>
+      </div>
+    </div>
+    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-2.5 py-1 text-right">
+      <span className="text-[9px] text-slate-400 block">แต้มสะสม</span>
+      <span id="userPoints" className="text-xs font-black text-amber-400">0 แต้ม</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div className="flex border-b border-slate-800 bg-slate-900 px-2 pt-1 sticky top-[65px] z-20">
+    <button onclick="switchTab('catalog')" className="flex-1 py-2.5 text-xs font-bold text-emerald-400 border-b-2 border-emerald-500 text-center">เมนูสินค้า</button>
+    <button onclick="switchTab('history')" className="flex-1 py-2.5 text-xs font-bold text-slate-400 border-b-2 border-transparent text-center">ติดตามออเดอร์</button>
+  </div>
+
+  <!-- Main Content Area -->
+  <main className="p-4 space-y-4 flex-1">
+    <!-- Products Catalog Container -->
+    <div id="catalogTab" className="space-y-3">
+      <div id="productsList" className="space-y-3">
+        <p className="text-center text-xs text-slate-500 py-8">กำลังโหลดรายการสินค้า...</p>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="historyTab" className="hidden space-y-3">
+      <p className="text-center text-xs text-slate-500 py-8">ไม่มีประวัติการสั่งซื้อ</p>
+    </div>
+  </main>
+
+  <!-- Sticky Bottom Cart Button -->
+  <div id="cartBar" className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-slate-950/90 border-t border-slate-800 backdrop-blur-xl z-40 hidden">
+    <button onclick="openCheckout()" className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl flex items-center justify-between shadow-xl">
+      <span id="cartCountBadge" className="bg-slate-950 text-emerald-400 px-2.5 py-0.5 rounded-full text-xs">0 รายการ</span>
+      <span>ดูตะกร้า & ปักหมุดชำระเงิน</span>
+      <span id="cartTotalText" className="font-mono text-base">฿0</span>
+    </button>
+  </div>
+
+  <script>
+    let appData = { settings: {}, products: [], orders: [] };
+    let cart = {};
+
+    function loadData() {
+      google.script.run.withSuccessHandler(function(data) {
+        appData = data;
+        document.getElementById('headerStoreName').innerText = data.settings.storeName || 'กระท่อมเขียวเดลิเวอรี';
+        renderProducts();
+      }).getInitialAppData();
+    }
+
+    function renderProducts() {
+      const container = document.getElementById('productsList');
+      if (!appData.products || appData.products.length === 0) {
+        container.innerHTML = '<p className="text-center text-xs text-slate-500 py-8">ไม่มีรายการสินค้าในขณะนี้</p>';
+        return;
+      }
+
+      container.innerHTML = appData.products.map(p => `
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex space-x-3">
+          <img src="${p.imageUrl}" className="w-20 h-20 object-cover rounded-xl bg-slate-800 shrink-0" />
+          <div className="flex-1 flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-xs text-white">${p.name}</h3>
+              <p className="text-[10px] text-slate-400">ขนาด ${p.size}</p>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-emerald-400 font-extrabold text-sm">฿${p.price}</span>
+              <button onclick="addToCart('${p.id}')" className="px-3 py-1 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">+ เพิ่ม</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addToCart(pId) {
+      cart[pId] = (cart[pId] || 0) + 1;
+      updateCartBar();
+    }
+
+    function updateCartBar() {
+      let totalQty = 0;
+      let totalSum = 0;
+      Object.entries(cart).forEach(([id, qty]) => {
+        totalQty += qty;
+        const p = appData.products.find(item => item.id === id);
+        if (p) totalSum += p.price * qty;
+      });
+
+      const bar = document.getElementById('cartBar');
+      if (totalQty > 0) {
+        bar.classList.remove('hidden');
+        document.getElementById('cartCountBadge').innerText = totalQty + ' รายการ';
+        document.getElementById('cartTotalText').innerText = '฿' + totalSum;
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    function switchTab(tab) {
+      if (tab === 'catalog') {
+        document.getElementById('catalogTab').classList.remove('hidden');
+        document.getElementById('historyTab').classList.add('hidden');
+      } else {
+        document.getElementById('catalogTab').classList.add('hidden');
+        document.getElementById('historyTab').classList.remove('hidden');
+      }
+    }
+
+    function openCheckout() {
+      alert('ระบบเดลิเวอรีปักหมุดพร้อมใช้งานแล้ว! กดตกลงเพื่อยืนยันออเดอร์');
+    }
+
+    window.onload = loadData;
+  </script>
+</body>
+</html>

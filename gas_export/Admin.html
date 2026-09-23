@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ระบบหลังบ้าน Admin Dashboard - Kratom Express</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background-color: #030712; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body class="max-w-5xl mx-auto min-h-screen p-4 space-y-4">
+
+  <!-- Header -->
+  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
+    <div>
+      <h1 className="font-extrabold text-base text-white">ระบบจัดการหลังบ้าน Admin Dashboard</h1>
+      <p className="text-xs text-slate-400">กระท่อมเขียวเดลิเวอรี (Real-time Google Sheets Sync)</p>
+    </div>
+    <button onclick="loadAdminData()" className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs font-bold text-slate-200 hover:text-emerald-400">🔄 รีเฟรชข้อมูล</button>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div className="flex space-x-2 border-b border-slate-800 pb-2 overflow-x-auto">
+    <button onclick="switchTab('orders')" className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950">จัดการออเดอร์</button>
+    <button onclick="switchTab('products')" className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300">สินค้าในคลัง</button>
+    <button onclick="switchTab('settings')" className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300">ตั้งค่าร้านค้า</button>
+  </div>
+
+  <!-- Orders Content -->
+  <div id="ordersTab" className="space-y-3">
+    <div id="adminOrdersList" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <p className="text-xs text-slate-500 col-span-full text-center py-10">กำลังดึงออเดอร์จาก Google Sheets...</p>
+    </div>
+  </div>
+
+  <!-- Settings Content -->
+  <div id="settingsTab" className="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
+    <h3 className="font-bold text-sm text-white">ตั้งค่าระบบและอัตราค่าจัดส่ง</h3>
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className="block text-slate-400 mb-1">เบอร์พร้อมเพย์</label>
+        <input id="setPhone" type="text" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" />
+      </div>
+      <div>
+        <label className="block text-slate-400 mb-1">ค่าส่งเริ่มต้น (บาท)</label>
+        <input id="setBaseFee" type="number" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white" />
+      </div>
+    </div>
+    <button onclick="saveSettingsAdmin()" className="w-full py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl">บันทึกตั้งค่า</button>
+  </div>
+
+  <script>
+    let adminData = { orders: [], settings: {} };
+
+    function loadAdminData() {
+      google.script.run.withSuccessHandler(function(data) {
+        adminData = data;
+        renderOrders();
+        document.getElementById('setPhone').value = data.settings.promptPayPhone || '0812345678';
+        document.getElementById('setBaseFee').value = data.settings.baseDeliveryFee || 10;
+      }).getInitialAppData();
+    }
+
+    function renderOrders() {
+      const container = document.getElementById('adminOrdersList');
+      if (!adminData.orders || adminData.orders.length === 0) {
+        container.innerHTML = '<p className="col-span-full text-center text-xs text-slate-500 py-10">ไม่พบคำสั่งซื้อ</p>';
+        return;
+      }
+
+      container.innerHTML = adminData.orders.map(o => `
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div className="flex justify-between items-center font-bold text-xs">
+            <span className="text-white">${o.id}</span>
+            <span className="text-emerald-400">฿${o.grandTotal} บาท</span>
+          </div>
+          <p className="text-xs text-slate-300">👤 ${o.customerName} (${o.customerPhone})</p>
+          <p className="text-[11px] text-slate-400">📍 ${o.deliveryAddress} (${o.distanceKm} กม.)</p>
+          <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+            <span className="text-amber-400">สถานะ: ${o.status}</span>
+            <button onclick="updateStatus('${o.id}', 'COMPLETED')" className="px-3 py-1 bg-emerald-500 text-slate-950 font-bold rounded-lg">จัดส่งสำเร็จ</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateStatus(ordId, newStatus) {
+      google.script.run.withSuccessHandler(function() {
+        loadAdminData();
+      }).updateOrderStatus(ordId, newStatus);
+    }
+
+    function switchTab(tab) {
+      if (tab === 'orders') {
+        document.getElementById('ordersTab').classList.remove('hidden');
+        document.getElementById('settingsTab').classList.add('hidden');
+      } else {
+        document.getElementById('ordersTab').classList.add('hidden');
+        document.getElementById('settingsTab').classList.remove('hidden');
+      }
+    }
+
+    window.onload = loadAdminData;
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "ระบบสั่งซื้อน้ำกระท่อมเดลิเวอรี & จัดการร้านค้า",
+  "description": "ระบบเดลิเวอรีสั่งซื้อน้ำกระท่อมดิบอัตโนมัติและจัดการร้านค้าครบวงจร (สไตล์ LINE Man) พร้อมระบบหลังบ้าน Admin และ Google Apps Script",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
